@@ -26,9 +26,12 @@ function displayTimer(display: TimerDisplay): void {
   console.clear();
   
   const timeString = formatTime(display.minutes, display.seconds);
-  const color = display.state === TimerState.BREAK ? chalk.yellow : chalk.green;
+  const color = display.state === TimerState.BREAK ? chalk.yellow : 
+                display.state === TimerState.PAUSED ? chalk.red : chalk.green;
   
-  const title = display.state === TimerState.WORK ? 'ポロモードタイマー - 作業中' : 'ポロモードタイマー - 休憩中';
+  let title = display.state === TimerState.WORK ? 'ポロモードタイマー - 作業中' : 
+              display.state === TimerState.BREAK ? 'ポロモードタイマー - 休憩中' :
+              'ポロモードタイマー - 一時停止中';
   console.log(chalk.bold(title));
   console.log();
   
@@ -44,11 +47,17 @@ function displayTimer(display: TimerDisplay): void {
   }
   
   console.log();
-  console.log('Esc: メニューに戻る | Ctrl+C: 終了');
+  if (display.state === TimerState.PAUSED) {
+    console.log('Ctrl+X: 再開 | Esc: メニューに戻る | Ctrl+C: 終了');
+  } else {
+    console.log('Ctrl+X: 一時停止 | Esc: メニューに戻る | Ctrl+C: 終了');
+  }
 }
 
 async function countdown(minutes: number, state: TimerState): Promise<boolean> {
   let remainingSeconds = minutes * 60;
+  let isPaused = false;
+  let currentState = state;
   
   return new Promise((resolve) => {
     const rl = readline.createInterface({
@@ -63,30 +72,60 @@ async function countdown(minutes: number, state: TimerState): Promise<boolean> {
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
 
-    const interval = setInterval(() => {
-      const mins = Math.floor(remainingSeconds / 60);
-      const secs = remainingSeconds % 60;
-      
-      displayTimer({
-        minutes: mins,
-        seconds: secs,
-        state: state
-      });
-      
-      remainingSeconds--;
-      
-      if (remainingSeconds < 0) {
-        clearInterval(interval);
-        if (process.stdin.isTTY) {
-          process.stdin.setRawMode(false);
+    let interval: NodeJS.Timeout;
+    
+    const startTimer = () => {
+      interval = setInterval(() => {
+        if (!isPaused) {
+          const mins = Math.floor(remainingSeconds / 60);
+          const secs = remainingSeconds % 60;
+          
+          displayTimer({
+            minutes: mins,
+            seconds: secs,
+            state: currentState
+          });
+          
+          remainingSeconds--;
+          
+          if (remainingSeconds < 0) {
+            clearInterval(interval);
+            if (process.stdin.isTTY) {
+              process.stdin.setRawMode(false);
+            }
+            process.stdin.removeListener('data', keyListener);
+            rl.close();
+            resolve(true);
+          }
         }
-        rl.close();
-        resolve(true);
-      }
-    }, 1000);
+      }, 1000);
+    };
+
+    // 初回表示
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    displayTimer({
+      minutes: mins,
+      seconds: secs,
+      state: currentState
+    });
+    
+    startTimer();
 
     // キー入力のリスナー
     const keyListener = (key: string) => {
+      // Ctrl+X (ASCII 24)
+      if (key === '\u0018') {
+        isPaused = !isPaused;
+        currentState = isPaused ? TimerState.PAUSED : state;
+        const mins = Math.floor(remainingSeconds / 60);
+        const secs = remainingSeconds % 60;
+        displayTimer({
+          minutes: mins,
+          seconds: secs,
+          state: currentState
+        });
+      }
       // Escキー (ASCII 27)
       if (key === '\u001b') {
         clearInterval(interval);
@@ -116,20 +155,49 @@ async function countdown(minutes: number, state: TimerState): Promise<boolean> {
 }
 
 async function showBreakEndScreen(): Promise<boolean> {
-  console.clear();
-  console.log(chalk.green.bold('休憩時間が終了しました！'));
-  console.log();
-  
-  const { action } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'action',
-      message: '次の作業を開始しますか？',
-      default: true
+  return new Promise((resolve) => {
+    console.clear();
+    console.log(chalk.green.bold('休憩時間が終了しました！'));
+    console.log();
+    console.log('Enter: 次の作業を開始 | Esc: メニューに戻る');
+    
+    // Raw modeを有効にしてキー入力を取得
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
     }
-  ]);
-  
-  return action;
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+    
+    const keyListener = (key: string) => {
+      // Enter (ASCII 13)
+      if (key === '\r') {
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
+        process.stdin.removeListener('data', keyListener);
+        resolve(true);
+      }
+      // Escキー (ASCII 27)
+      if (key === '\u001b') {
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
+        process.stdin.removeListener('data', keyListener);
+        resolve(false);
+      }
+      // Ctrl+C
+      if (key === '\u0003') {
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
+        process.stdin.removeListener('data', keyListener);
+        console.clear();
+        process.exit(0);
+      }
+    };
+    
+    process.stdin.on('data', keyListener);
+  });
 }
 
 export async function startTimer(config: Config): Promise<void> {
