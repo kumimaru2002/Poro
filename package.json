@@ -1,6 +1,6 @@
 {
   "name": "poro-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI Pomodoro Timer and Stopwatch - A simple command-line time management tool",
   "main": "dist/index.js",
   "bin": {
