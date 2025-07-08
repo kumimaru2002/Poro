@@ -18,7 +18,21 @@ Poroは、コマンドラインで使えるシンプルな時間管理ツール�
 
 ## インストール
 
+### npmからインストール（推奨）
 ```bash
+# グローバルインストール
+npm install -g poro-cli
+
+# または、npxで直接実行
+npx poro-cli
+```
+
+### ソースコードからインストール
+```bash
+# リポジトリをクローン
+git clone https://github.com/kumimaru2002/Poro.git
+cd Poro
+
 # パッケージのインストール
 npm install
 

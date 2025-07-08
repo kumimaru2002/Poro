@@ -1,7 +1,7 @@
 {
-  "name": "poro",
+  "name": "poro-cli",
   "version": "1.0.0",
-  "description": "CLI Pomodoro Timer",
+  "description": "CLI Pomodoro Timer and Stopwatch - A simple command-line time management tool",
   "main": "dist/index.js",
   "bin": {
     "poro": "./dist/index.js"
@@ -12,15 +12,32 @@
     "start": "node dist/index.js",
     "lint": "eslint src/**/*.ts",
     "lintfix": "eslint src/**/*.ts --fix",
-    "test": "jest"
+    "test": "jest",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "pomodoro",
     "timer",
-    "cli"
+    "cli",
+    "stopwatch",
+    "productivity",
+    "time-management",
+    "command-line",
+    "terminal"
   ],
-  "author": "",
+  "author": "kumimaru",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kumimaru2002/Poro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kumimaru2002/Poro/issues"
+  },
+  "homepage": "https://github.com/kumimaru2002/Poro#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "devDependencies": {
     "@types/figlet": "^1.7.0",
     "@types/inquirer": "^9.0.7",

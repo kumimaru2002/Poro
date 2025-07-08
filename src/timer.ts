@@ -1,13 +1,12 @@
 import chalk from 'chalk';
 import figlet from 'figlet';
-import inquirer from 'inquirer';
 import readline from 'readline';
 import { Config } from './types';
 
 enum TimerState {
   WORK = 'work',
   BREAK = 'break',
-  PAUSED = 'paused'
+  PAUSED = 'paused',
 }
 
 interface TimerDisplay {
@@ -24,28 +23,35 @@ function formatTime(minutes: number, seconds: number): string {
 
 function displayTimer(display: TimerDisplay): void {
   console.clear();
-  
+
   const timeString = formatTime(display.minutes, display.seconds);
-  const color = display.state === TimerState.BREAK ? chalk.yellow : 
-                display.state === TimerState.PAUSED ? chalk.red : chalk.green;
-  
-  let title = display.state === TimerState.WORK ? 'ポロモードタイマー - 作業中' : 
-              display.state === TimerState.BREAK ? 'ポロモードタイマー - 休憩中' :
-              'ポロモードタイマー - 一時停止中';
+  const color =
+    display.state === TimerState.BREAK
+      ? chalk.yellow
+      : display.state === TimerState.PAUSED
+        ? chalk.red
+        : chalk.green;
+
+  const title =
+    display.state === TimerState.WORK
+      ? 'ポロモードタイマー - 作業中'
+      : display.state === TimerState.BREAK
+        ? 'ポロモードタイマー - 休憩中'
+        : 'ポロモードタイマー - 一時停止中';
   console.log(chalk.bold(title));
   console.log();
-  
+
   try {
     const bigText = figlet.textSync(timeString, {
       font: 'ANSI Shadow',
       horizontalLayout: 'default',
-      verticalLayout: 'default'
+      verticalLayout: 'default',
     });
     console.log(color(bigText));
   } catch (err) {
     console.log(color.bold(timeString));
   }
-  
+
   console.log();
   if (display.state === TimerState.PAUSED) {
     console.log('Ctrl+X: 再開 | Esc: メニューに戻る | Ctrl+C: 終了');
@@ -58,11 +64,11 @@ async function countdown(minutes: number, state: TimerState): Promise<boolean> {
   let remainingSeconds = minutes * 60;
   let isPaused = false;
   let currentState = state;
-  
+
   return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
 
     // Raw modeを有効にしてキー入力を取得
@@ -73,21 +79,21 @@ async function countdown(minutes: number, state: TimerState): Promise<boolean> {
     process.stdin.setEncoding('utf8');
 
     let interval: NodeJS.Timeout;
-    
+
     const startTimer = () => {
       interval = setInterval(() => {
         if (!isPaused) {
           const mins = Math.floor(remainingSeconds / 60);
           const secs = remainingSeconds % 60;
-          
+
           displayTimer({
             minutes: mins,
             seconds: secs,
-            state: currentState
+            state: currentState,
           });
-          
+
           remainingSeconds--;
-          
+
           if (remainingSeconds < 0) {
             clearInterval(interval);
             if (process.stdin.isTTY) {
@@ -107,9 +113,9 @@ async function countdown(minutes: number, state: TimerState): Promise<boolean> {
     displayTimer({
       minutes: mins,
       seconds: secs,
-      state: currentState
+      state: currentState,
     });
-    
+
     startTimer();
 
     // キー入力のリスナー
@@ -123,7 +129,7 @@ async function countdown(minutes: number, state: TimerState): Promise<boolean> {
         displayTimer({
           minutes: mins,
           seconds: secs,
-          state: currentState
+          state: currentState,
         });
       }
       // Escキー (ASCII 27)
@@ -160,14 +166,14 @@ async function showBreakEndScreen(): Promise<boolean> {
     console.log(chalk.green.bold('休憩時間が終了しました！'));
     console.log();
     console.log('Enter: 次の作業を開始 | Esc: メニューに戻る');
-    
+
     // Raw modeを有効にしてキー入力を取得
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(true);
     }
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
-    
+
     const keyListener = (key: string) => {
       // Enter (ASCII 13)
       if (key === '\r') {
@@ -195,33 +201,38 @@ async function showBreakEndScreen(): Promise<boolean> {
         process.exit(0);
       }
     };
-    
+
     process.stdin.on('data', keyListener);
   });
 }
 
 export async function startTimer(config: Config): Promise<void> {
   let continueSession = true;
-  
+
   while (continueSession) {
     const workCompleted = await countdown(config.workMinutes, TimerState.WORK);
-    
+
     // Escキーで中断された場合
     if (!workCompleted) {
       return;
     }
-    
+
     console.clear();
-    console.log(chalk.yellow.bold('作業時間が終了しました！休憩を開始します。'));
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const breakCompleted = await countdown(config.breakMinutes, TimerState.BREAK);
-    
+    console.log(
+      chalk.yellow.bold('作業時間が終了しました！休憩を開始します。')
+    );
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const breakCompleted = await countdown(
+      config.breakMinutes,
+      TimerState.BREAK
+    );
+
     // Escキーで中断された場合
     if (!breakCompleted) {
       return;
     }
-    
+
     continueSession = await showBreakEndScreen();
   }
 }
